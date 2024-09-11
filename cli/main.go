@@ -2,15 +2,17 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"strings"
-	// "io"
 	// "flag"
-	// "strings"
 	"errors"
+    "runtime"
+    "goverse/internal/models"
 )
-
 
 //////////////////////////////
 // PRINT / HELPER FUNCTIONS //
@@ -35,8 +37,16 @@ func printGray(str string, bold bool) {
 func printError(str string) {
     fmt.Fprintf(os.Stderr,"%s%c  %s%s\n", MAKE_RED, CAUTION, str, CLEAR_COLOR)
 }
+
 func printErr(err error) {
-    fmt.Fprintf(os.Stderr,"%s%c  %s%s\n", MAKE_RED, CAUTION, err, CLEAR_COLOR)
+    // Capture the file and line number of where the error occurred
+    _, file, line, ok := runtime.Caller(1)
+    if ok {
+        fmt.Fprintf(os.Stderr, "%s%c  %s (at %s:%d)%s\n", MAKE_RED, CAUTION, err, file, line, CLEAR_COLOR)
+    } else {
+        // Fallback to just printing the error if runtime.Caller fails
+        fmt.Fprintf(os.Stderr, "%s%c  %s%s\n", MAKE_RED, CAUTION, err, CLEAR_COLOR)
+    }
 }
 
 ///////////////////
@@ -45,6 +55,7 @@ func printErr(err error) {
 
 // Paths
 var baseDir string
+const GOVERSE = ".goverse"
 const (
     GOVERSE_DIR = ".goverse/"
     OBJECTS_DIR = GOVERSE_DIR + "objects/"
@@ -54,26 +65,99 @@ const (
 )
 
 func initGoverse() {
+
+    // Create necessary dirs and files for goverse VCS
     dirs := []string{ GOVERSE_DIR, OBJECTS_DIR, TAGS_DIR }
-    files := []string{ CONFIG_FILE, HEAD_FILE }
+    initFiles := []string{ CONFIG_FILE, HEAD_FILE }
     for _, dir := range dirs {
         err := os.MkdirAll(baseDir + dir, 0755)
         if err != nil {
             printErr(err)
         }
     }
-    for _, file := range files {
-        newFile, err := os.Create(baseDir + file)
+    for _, initFile := range initFiles {
+        newFile, err := os.Create(baseDir + initFile)
         if err != nil {
             printErr(err)
         }
         newFile.Close()
     }
+
+    readFiles(baseDir)
 }
 
-func status(){
+func readFiles(path string) {
+    // Establish FileData for each file in project
+    files, err := os.ReadDir(path)
+    if err != nil {
+        printErr(err)
+    }
+    
+    for _, file := range files {
+        if file.Name() == GOVERSE {continue}
+
+        
+        
+
+
+        if file.IsDir() {
+            readFiles(path + file.Name() + "/")
+        }
+        store(path + file.Name())
+    }
+}
+
+func store(path string) (string) {
+    file, err := os.Open(path)
+    if err != nil {
+        printErr(err)
+    }
+    defer file.Close()
+
+    hasher := sha1.New()
+
+    fileInfo, err := file.Stat()
+    if err != nil {
+        printErr(err)
+    }
+    if fileInfo.IsDir() {
+        // fill hasher with dir path
+        _, err := hasher.Write([]byte(path))
+        if err != nil {
+            printErr(err)
+        }
+    } else {
+        // fill hasher with file content
+        _, err := io.Copy(hasher, file)
+        if err != nil {
+            printErr(err)
+        }
+    }
+
+    perms := fmt.Sprintf("%o", fileInfo.Mode())
+
+    // finalize hash
+    hashBytes := hasher.Sum(nil)
+    hashString := hex.EncodeToString(hashBytes)
+    te := models.TreeEntry {
+        Name: fileInfo.Name(),
+        Mode: perms,
+        Hash: hashString,
+        IsBlob: !fileInfo.IsDir(),
+    }
+
+    println(te.Name)
+    println(te.IsBlob)
+
+
+    println("String: " + path + " Hash: " + hashString)
+    
+    return hashString
+}
+
+func checkHealth() {
     ls, err := os.ReadDir(baseDir + GOVERSE_DIR)
-	if err != nil {
+    if err != nil {
         printErr(err)
     }
     for _, entry := range ls {
@@ -83,6 +167,10 @@ func status(){
 
 func add() {
     
+}
+
+func status() {
+
 }
 
 func diff() {
@@ -111,8 +199,9 @@ func flush() {
 func printHelp() {
     printGray("valid commands:\n", true)
     printGray("  i   init\tInit cwd as a repository\n", false)
-    printGray("  s   status\tCheck repository status\n", false)
+    printGray("  e   check\tCheck .goverse/ for entries\n", false)
     printGray("  a   add\tAdd file to next commit\n", false)
+    printGray("  s   status\tCheck repository status\n", false)
     printGray("  d   diff\tIdentify changes\n", false)
     printGray("  t   tag\tTag this commit with version\n", false)
     printGray("  c   commit\tSend code to remote\n", false)
@@ -141,9 +230,11 @@ func interactive() {
         switch(cmd) {
         case "i", "init":
             initGoverse()
+        case "e", "checkHealth":
+            checkHealth()
+        case "a", "add":
         case "s", "status":
             status()
-        case "a", "add":
         case "d", "diff":
         case "t", "tag":
         case "c", "commit":
