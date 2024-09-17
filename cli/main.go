@@ -8,9 +8,9 @@ import (
 	"io"
 	"os"
 	"strings"
-	// "flag"
 	"errors"
     "runtime"
+
     "goverse/internal/models"
 )
 
@@ -72,21 +72,27 @@ const (
     CONFIG_FILE = GOVERSE_DIR + "config"
     HEAD_FILE   = GOVERSE_DIR + "head"
 )
-const TEST_DIR = OBJECTS_DIR + "another/file/smd/lol/lmao"
+// test dirs
+const TD4 = OBJECTS_DIR + "another/yep"
+const TD1 = OBJECTS_DIR + "another/file/smd/lol/lmao"
+const TD2 = OBJECTS_DIR + "another/file/smd/lol/haha"
+const TD3 = OBJECTS_DIR + "another/file/to/fuck/with"
+const TD5 = OBJECTS_DIR + "another/yep/ha"
 
 func initGoverse() {
 
     // Create necessary dirs and files for goverse VCS
-    dirs := []string{ GOVERSE_DIR, OBJECTS_DIR, TAGS_DIR, TEST_DIR }
-    initFiles := []string{ CONFIG_FILE, HEAD_FILE }
+    dirs := []string{ GOVERSE_DIR, OBJECTS_DIR, TAGS_DIR }
+    // dirs = append(dirs, TD1, TD2, TD3, TD4, TD5)
+    files := []string{ CONFIG_FILE, HEAD_FILE }
     for _, dir := range dirs {
         err := os.MkdirAll(baseDir + dir, 0755)
         if err != nil {
             printErr(err)
         }
     }
-    for _, initFile := range initFiles {
-        newFile, err := os.Create(baseDir + initFile)
+    for _, file := range files {
+        newFile, err := os.Create(baseDir + file)
         if err != nil {
             printErr(err)
         }
@@ -97,17 +103,11 @@ func initGoverse() {
         Hash: "0",
     }
     readFiles(baseDir, rootTree)
-    root, err := os.Create(baseDir + TEST_DIR + rootTree.Hash)
+    root, err := os.Create(baseDir + OBJECTS_DIR + rootTree.Hash)
     if err != nil {
         printErr(err)
     }
     root.Close()
-
-    // readFiles(baseDir, rootTree)
-    // testFile, err := os.Create(baseDir + OBJECTS_DIR + "some-bs1")
-    // testFile.Close()
-    // testFile, err = os.Create(baseDir + TEST_DIR + "some-bs2")
-    // testFile.Close()
 }
 
 func readFiles(path string, tree models.Tree) {
@@ -151,7 +151,7 @@ func readFiles(path string, tree models.Tree) {
                 Hash: hashString,
                 Entries: []models.TreeEntry{},
             }
-            // fmt.Printf("entry hash: %s\n tree hash: %s\n", te.Hash, t.Hash)
+            fmt.Printf("entry hash: %s\n tree hash: %s\n", te.Hash, t.Hash)
             if file.IsDir() {
                 readFiles(thisPath + "/", t)
             }
@@ -211,26 +211,85 @@ func store(path string) (string, models.TreeEntry) {
     return hashString, te
 }
 
-func getEntryString(entry os.DirEntry, depth int, siblings bool) (string) {
+
+func getEntryString(entry os.DirEntry, depth int, lines []bool, siblings bool, first bool, last bool) (string) {
     entryString := ""
+    entryString += MAKE_MEDIUM_GRAY
+
+
+    for i := 0; i < depth; i++ {
+        if lines[i] == true {
+            entryString += "│  "
+        } else {
+            entryString += "   "
+        }
+    }
+
+    // prefix
+    if first {
+        entryString += "┌─ "
+    } else if last {
+        entryString += "└─ "
+    } else if !siblings {
+        entryString += "├─ "
+    } else {
+        entryString += "└─ "
+    }
+
+
+    // name
+    if entry.IsDir() {
+        entryString += MAKE_BLUE + MAKE_BOLD
+    } else {
+        entryString += MAKE_GREEN
+    }
+    entryString += entry.Name()
+
+    entryString += CLEAR_COLOR
+    entryString += "\n"
+
+    return entryString
+}
+
+
+func getEntryString2(entry os.DirEntry, depth int, lines []int, siblings bool, first bool, last bool) (string) {
+    entryString := ""
+    entryString += MAKE_MEDIUM_GRAY
     if depth > 0 {
-        entryString += MAKE_MEDIUM_GRAY
-        entryString += strings.Repeat(" ", depth * 2 )
+        entryString += " │"
+        if len(lines) > 0 && siblings {
+            for _, line := range lines {
+                entryString += strings.Repeat(" ", line + 1)
+                entryString += "│"
+                entryString += strings.Repeat(" ", 0)
+            }
+        } else {
+            entryString += strings.Repeat(" ", depth * 2)
+        }
+
         // entryString += MAKE_BOLD
         if siblings {
             entryString += "├" 
-        } else{ 
+        } else { 
             entryString += "└"
         }
         if entry.IsDir() {
 
         }
-        entryString += "─ "
+        // entryString += "─┐ "
+        entryString += "─┬ "
         // entryString += "  ┗━ "
         // entryString += "┖─ "
         entryString += CLEAR_COLOR
     } else {
-        entryString += " "
+        if first {
+            entryString += " ┌─ "
+        } else if last { 
+            entryString += " └─ "
+        } else {
+            entryString += " ├─ "
+        }
+        // entryString += " "
     }
     if entry.IsDir(){
         entryString += MAKE_BLUE
@@ -251,21 +310,26 @@ func getEntryString(entry os.DirEntry, depth int, siblings bool) (string) {
     return entryString
 }
 
-func checkHealth(path string, depth int) {
-    // fmt.Println("objects:")
+func checkHealth(path string, depth int, lines []bool) {
     ls, err := os.ReadDir(path)
-    // ls, err := os.ReadDir(baseDir + GOVERSE_DIR + path)
     if err != nil {
         printErr(err)
     }
+    first := true && depth == 0
     for i, entry := range ls {
-        if i == len(ls) - 1 {
-            fmt.Print(getEntryString(entry, depth, false))
-        } else {
-            fmt.Print(getEntryString(entry, depth, true))
-        }
+        siblings := i != len(ls) - 1
+        if depth >= len(lines) {
+			lines = append(lines, siblings)
+		} else {
+			lines[depth] = siblings
+		}
+        // print(lines[1])
+        // print(i)
+        // siblings = false
+        fmt.Print(getEntryString(entry, depth, lines, !siblings, first, false))
+        first = false
         if entry.IsDir() {
-            checkHealth(path + entry.Name() + "/", depth + 1)
+            checkHealth(path + entry.Name() + "/", depth + 1, lines)
         }
     }
 }
@@ -336,7 +400,7 @@ func interactive() {
         case "i", "init":
             initGoverse()
         case "e", "checkHealth":
-            checkHealth(baseDir + GOVERSE_DIR, 0)
+            checkHealth(baseDir + GOVERSE_DIR, 0, []bool{true})
         case "a", "add":
         case "s", "status":
             status()
@@ -403,12 +467,4 @@ func main() {
     fmt.Println("Base dir: ", baseDir)
     interactive()
 
-    // switch args[1]{
-    // case "i", "interactive":
-    //     interactive()
-    // default:
-    //     printError("usage error: invalid argument, did you mean 'interactive'?")
-    //     if exit {os.Exit(1)}
-    //     return
-    // }
 }
