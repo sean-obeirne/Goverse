@@ -20,12 +20,6 @@ type Commit struct {
     Timestamp string
 }
 
-type FileData struct {
-    Path      string
-    Modified  bool
-    Tracked   bool
-}
-
 type Tag struct {
     Name    string
     Version string
@@ -34,6 +28,8 @@ type Tag struct {
 
 // Storage structs
 type Blob struct {
+    Modified  bool
+    Tracked   bool
     Hash    string
     Content []byte
 }
