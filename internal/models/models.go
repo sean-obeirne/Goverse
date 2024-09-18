@@ -28,20 +28,18 @@ type Tag struct {
 
 // Storage structs
 type Blob struct {
-    Modified  bool
-    Tracked   bool
-    Hash    string
     Content []byte
 }
 
 type TreeEntry struct {
-    Name    string
-    Mode    string
-    Hash    string
-    IsBlob  bool
+    Name      string
+    Mode      string
+    Hash      string
+    IsBlob    bool
+    Modified  bool
+    Tracked   bool
 }
 
 type Tree struct {
-    Hash    string
     Entries []TreeEntry
 }
