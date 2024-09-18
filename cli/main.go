@@ -151,9 +151,12 @@ func interactive() {
 
         switch(cmd) {
         case "i", "init":
-            core.InitGoverse()
+            err := core.InitGoverse()
+            if err != nil {
+                printErr(err)
+            }
         case "p", "printGoverse":
-            printGoverse(core.BaseDir + core.GOVERSE_DIR, 0, []bool{true})
+            printGoverse(core.BaseDir, 0, []bool{true})
         case "a", "add":
         case "s", "status":
             core.Status()
