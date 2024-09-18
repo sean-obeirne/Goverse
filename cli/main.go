@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 	"errors"
-    "runtime"
+    // "runtime"
 
     "goverse/core"
 )
@@ -45,14 +45,33 @@ func printError(str string) {
 }
 
 func printErr(err error) {
-    // Capture the file and line number of where the error occurred
-    _, file, line, ok := runtime.Caller(1)
-    if ok {
-        fmt.Fprintf(os.Stderr, "%s%c  %s (at %s:%d)%s\n", MAKE_RED, CAUTION, err, file, line, CLEAR_COLOR)
-    } else {
-        // Fallback to just printing the error if runtime.Caller fails
-fmt.Fprintf(os.Stderr, "%s%c  %s%s\n", MAKE_RED, CAUTION, err, CLEAR_COLOR)
+    // TODO: make this more simple by eliminating new random line problems
+    errStrings := strings.Split(string(err.Error()), "\n")
+    trimmed := []string{}
+    for _, er := range errStrings {
+        if strings.TrimSpace(er) != "" {
+            trimmed = append(trimmed, er)
+            // trimmed = append(trimmed, strings.TrimSpace(er))
+        }
     }
+    for i, er := range trimmed {
+        if i == 0 {
+            trimmed[i] = fmt.Sprintf(" %s%c  %s%s\n", MAKE_RED, CAUTION, er, CLEAR_COLOR)
+        } else if i == len(trimmed) - 1 {
+            trimmed[i] = fmt.Sprintf("      %s%s%s%s\n", MAKE_RED, MAKE_BOLD, er, CLEAR_COLOR)
+        } else {
+            trimmed[i] = fmt.Sprintf(" %s%c  %s%s\n", MAKE_RED, CAUTION, er, CLEAR_COLOR)
+        }
+    }
+    fmt.Fprintf(os.Stderr, "%s", strings.Join(trimmed, ""))
+
+    // // Capture the file and line number of where the error occurred
+    // _, file, line, ok := runtime.Caller(1)
+    // if ok {
+    //     fmt.Fprintf(os.Stderr, "%s%c  %s (at %s:%d)%s\n", MAKE_RED, CAUTION, err, file, line, CLEAR_COLOR)
+    // } else {
+    //  // Fallback to just printing the error if runtime.Caller fails
+    // }
 }
 
 
