@@ -58,6 +58,7 @@ func InitGoverse() (error) {
     if err != nil {
         return err
     }
+    // println("Entries: ")
     // root, err := os.Create(BaseDir + OBJECTS_DIR + rootTree.Hash)
     // if err != nil {
     //     return err
@@ -66,31 +67,47 @@ func InitGoverse() (error) {
     return nil
 }
 
+/*
+func printTree(t models.Tree) {
+    for _, entry := range t.Entries {
+        println(entry.Name)
+        if !entry.IsBlob {
+            printTree(entry)
+        }
+    }
+}
+*/
 
 func readFiles(path string, tree *models.Tree) (error) {
+    // read directory
     entries, err := os.ReadDir(path)
     if err != nil {
         return err
     }
     
+    // loop through directory
     for _, entry := range entries {
+
+        // skip meta goverse directory
         if entry.Name() == GOVERSE {continue}
 
-
+        // get new entry's path
         thisPath := path + entry.Name() 
         if entry.IsDir() {
             thisPath += "/"
         }
 
-
+        // create tree entry for this entry
         te, err := createTreeEntry(thisPath)
         if err != nil {
             return err
         }
-
+        
+        // add new tree entry to tree
         tree.Entries = append(tree.Entries, te)
 
 
+        // store blob content, or tree with tree entrys populated
         if te.IsBlob {
             content, err := os.ReadFile(thisPath)
             if err != nil {
@@ -99,8 +116,14 @@ func readFiles(path string, tree *models.Tree) (error) {
             b := models.Blob {
                 Content: content,
             }
-            blobHash, _ := hashBlob(b)
-            fmt.Printf("entry hash: %s\n blob hash: %s\n", te.Hash, blobHash)
+            err = storeBlob(b)
+            if err != nil {
+                return err
+            }
+
+            newBlobHash, _ := hashBlob(b)
+            newContent, _ := getContent(newBlobHash)
+            println(string(newContent))
         } else {
             t := models.Tree {
                 Entries: []models.TreeEntry{},
@@ -115,6 +138,33 @@ func readFiles(path string, tree *models.Tree) (error) {
     }
     return nil
 }
+
+func storeBlob(b models.Blob) (error) {
+    hashString, err := hashBlob(b)
+    if err != nil {
+        return err
+    }
+    err = os.WriteFile(BaseDir + OBJECTS_DIR + hashString, b.Content, 0755)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func getContent(hash string) ([]byte, error) {
+    files, err := os.ReadDir(BaseDir + OBJECTS_DIR)
+    if err != nil {
+        return nil, err
+    }
+    for _, file := range files {
+        if file.Name() == hash {
+            return os.ReadFile(BaseDir + OBJECTS_DIR + hash)
+        }
+    }
+    return []byte{}, nil
+}
+
 
 func getHash(str string) (string, error) {
     hasher := sha1.New()
@@ -178,7 +228,7 @@ func hashFile(path string) (string, error){
 }
 
 func createTreeEntry(path string) (models.TreeEntry, error) {
-    println("\tcreateTreeEntry path: " + path)
+    // println("\tcreateTreeEntry path: " + path)
 
     fileInfo, err := os.Stat(path)
     if err != nil {
