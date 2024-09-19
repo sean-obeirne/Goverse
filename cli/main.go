@@ -116,13 +116,16 @@ func getEntryString(entry os.DirEntry, depth int, lines []bool, siblings bool, f
 
 
 
-func printGoverse(path string, depth int, lines []bool) {
+func printGoverse(path string, depth int, lines []bool, showGoverse bool) {
     ls, err := os.ReadDir(path)
     if err != nil {
         printErr(err)
     }
     first := true && depth == 0
     for i, entry := range ls {
+        if entry.Name() == core.GOVERSE && !showGoverse { 
+            continue
+        }
         siblings := i != len(ls) - 1
         if depth >= len(lines) {
 			lines = append(lines, siblings)
@@ -132,7 +135,7 @@ func printGoverse(path string, depth int, lines []bool) {
         fmt.Print(getEntryString(entry, depth, lines, !siblings, first, false))
         first = false
         if entry.IsDir() {
-            printGoverse(path + entry.Name() + "/", depth + 1, lines)
+            printGoverse(path + entry.Name() + "/", depth + 1, lines, showGoverse)
         }
     }
 }
@@ -141,7 +144,9 @@ func printGoverse(path string, depth int, lines []bool) {
 func printHelp() {
     printGray("valid commands:\n", true)
     printGray("  i   init\tInit cwd as a repository\n", false)
-    printGray("  e   check\tCheck .goverse/ for entries\n", false)
+    printGray("  p   print\tPrint your entire project directory\n", false)
+    printGray("  pr   print\tPrint your repository\n", false)
+    printGray("  pg   print\tPrint your .goverse directory\n", false)
     printGray("  a   add\tAdd file to next commit\n", false)
     printGray("  s   status\tCheck repository status\n", false)
     printGray("  d   diff\tIdentify changes\n", false)
@@ -174,11 +179,18 @@ func interactive() {
             if err != nil {
                 printErr(err)
             }
-        case "p", "printGoverse":
-            printGoverse(core.BaseDir, 0, []bool{true})
+        case "p", "print":
+            printGoverse(core.BaseDir, 0, []bool{true}, true)
+        case "pg", "printGoverse":
+            printGoverse(core.BaseDir + core.GOVERSE_DIR, 0, []bool{true}, true)
+        case "pr", "printRepo":
+            printGoverse(core.BaseDir, 0, []bool{false}, false)
         case "a", "add":
         case "s", "status":
-            core.Status()
+            err := core.Status()
+            if err != nil {
+                printErr(err)
+            }
         case "d", "diff":
         case "t", "tag":
         case "c", "commit":
