@@ -145,8 +145,9 @@ func printHelp() {
     printGray("valid commands:\n", true)
     printGray("  i   init\tInit cwd as a repository\n", false)
     printGray("  p   print\tPrint your entire project directory\n", false)
-    printGray("  pr   print\tPrint your repository\n", false)
-    printGray("  pg   print\tPrint your .goverse directory\n", false)
+    printGray("  pr  print\tPrint your repository\n", false)
+    printGray("  pg  print\tPrint your .goverse directory\n", false)
+    printGray("  pt  print\tPrint your working tree\n", false)
     printGray("  a   add\tAdd file to next commit\n", false)
     printGray("  s   status\tCheck repository status\n", false)
     printGray("  d   diff\tIdentify changes\n", false)
@@ -181,9 +182,9 @@ func interactive() {
             }
         case "p", "print":
             printGoverse(core.BaseDir, 0, []bool{true}, true)
-        case "pg", "printGoverse":
+        case "pg":
             printGoverse(core.BaseDir + core.GOVERSE_DIR, 0, []bool{true}, true)
-        case "pr", "printRepo":
+        case "pr":
             printGoverse(core.BaseDir, 0, []bool{false}, false)
         case "a", "add":
         case "s", "status":
