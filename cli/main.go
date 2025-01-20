@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-	"errors"
+    "bufio"
+    "fmt"
+    "os"
+    "strings"
+    // "strconv"
+    "errors"
     // "runtime"
 
     "goverse/core"
@@ -75,10 +76,9 @@ func printErr(err error) {
 }
 
 
-func getEntryString(entry os.DirEntry, depth int, lines []bool, siblings bool, first bool, last bool) (string) {
+func getEntryString(entry os.DirEntry, isChanged bool, depth int, lines []bool, siblings bool, first bool, last bool, inGoverse bool) (string) {
     entryString := ""
     entryString += MAKE_MEDIUM_GRAY
-
 
     for i := 0; i < depth; i++ {
         if lines[i] == true {
@@ -104,7 +104,11 @@ func getEntryString(entry os.DirEntry, depth int, lines []bool, siblings bool, f
     if entry.IsDir() {
         entryString += MAKE_BLUE + MAKE_BOLD
     } else {
-        entryString += MAKE_GREEN
+        if !isChanged || inGoverse{
+            entryString += MAKE_GREEN
+        } else {
+            entryString += MAKE_RED
+        }
     }
     entryString += entry.Name()
 
@@ -116,7 +120,7 @@ func getEntryString(entry os.DirEntry, depth int, lines []bool, siblings bool, f
 
 
 
-func printGoverse(path string, depth int, lines []bool, showGoverse bool) {
+func printGoverse(path string, depth int, lines []bool, showGoverse bool, inGoverse bool) {
     ls, err := os.ReadDir(path)
     if err != nil {
         printErr(err)
@@ -126,18 +130,39 @@ func printGoverse(path string, depth int, lines []bool, showGoverse bool) {
         if entry.Name() == core.GOVERSE && !showGoverse { 
             continue
         }
+
+        // goverse dir should not be checked for changes
+        if path == core.BaseDir + core.GOVERSE_DIR {
+            inGoverse = true
+        }
+        // if entry.Name() == core.GOVERSE {
+            // println(inGoverse)
+            // inGoverse = true
+            // println(entry.Name())
+        // }
         siblings := i != len(ls) - 1
         if depth >= len(lines) {
 			lines = append(lines, siblings)
 		} else {
 			lines[depth] = siblings
 		}
-        fmt.Print(getEntryString(entry, depth, lines, !siblings, first, false))
+        // println("yep path: " + path + entry.Name())
+        changed, _ := core.CheckChanged(path + entry.Name())
+        fmt.Print(getEntryString(entry, changed, depth, lines, !siblings, first, false, inGoverse))
         first = false
         if entry.IsDir() {
-            printGoverse(path + entry.Name() + "/", depth + 1, lines, showGoverse)
+            printGoverse(path + entry.Name() + "/", depth + 1, lines, showGoverse, inGoverse)
         }
     }
+}
+
+func getFile(reader *bufio.Reader) (string) {
+    printGoverse(core.BaseDir, 0, []bool{true}, false, false)
+    printGray("Add file: ", false)
+    fmt.Print(MAKE_GREEN)
+    file, _ := reader.ReadString('\n')
+    fmt.Print(CLEAR_COLOR)
+    return file
 }
 
 
@@ -147,7 +172,6 @@ func printHelp() {
     printGray("  p   print\tPrint your entire project directory\n", false)
     printGray("  pr  print\tPrint your repository\n", false)
     printGray("  pg  print\tPrint your .goverse directory\n", false)
-    printGray("  pt  print\tPrint your working tree\n", false)
     printGray("  a   add\tAdd file to next commit\n", false)
     printGray("  s   status\tCheck repository status\n", false)
     printGray("  d   diff\tIdentify changes\n", false)
@@ -161,8 +185,8 @@ func printHelp() {
 
 func interactive() {
     running := true
+    reader := bufio.NewReader(os.Stdin)
     for running {
-        reader := bufio.NewReader(os.Stdin)
 
         fmt.Print(MAKE_YELLOW)
         fmt.Print("goverse command > ")
@@ -181,12 +205,16 @@ func interactive() {
                 printErr(err)
             }
         case "p", "print":
-            printGoverse(core.BaseDir, 0, []bool{true}, true)
+            printGoverse(core.BaseDir, 0, []bool{true}, true, false)
         case "pg":
-            printGoverse(core.BaseDir + core.GOVERSE_DIR, 0, []bool{true}, true)
+            printGoverse(core.BaseDir + core.GOVERSE_DIR, 0, []bool{true}, true, false)
         case "pr":
-            printGoverse(core.BaseDir, 0, []bool{false}, false)
+            printGoverse(core.BaseDir, 0, []bool{false}, false, false)
         case "a", "add":
+            err := core.Add(getFile(reader))
+            if err != nil {
+                printErr(err)
+            }
         case "s", "status":
             err := core.Status()
             if err != nil {

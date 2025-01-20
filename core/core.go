@@ -388,9 +388,33 @@ func createTreeEntry(path string) (models.TreeEntry, error) {
     return te, nil
 }
 
-
-func Add() {
+func getStoredObject(path string) (string, error) {
+    head, err := getHead()
+    if err != nil {
+        return "", fmt.Errorf("Unable to find head\n%w\n", err)
+    }
     
+    return head, fmt.Errorf("Unable to find stored hash for %s\n%w\n", path, err)
+}
+
+func CheckChanged(fileName string) (bool, error) {
+    path := fileName
+    thisHash, err := hashFile(path)
+    if err != nil {
+        return false, fmt.Errorf("Unable to get hash for %s\n%w\n", path, err)
+    }
+
+    storedItemHash := BaseDir + OBJECTS_DIR + thisHash
+    if _, err := os.Stat(storedItemHash); err == nil {
+        return false, fmt.Errorf("Unable to get hash for %s\n%w\n", path, err)
+    }
+    return true, nil
+}
+
+
+func Add(file string) (error) {
+    
+    return nil
 }
 
 func Status() (error) {
